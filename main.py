@@ -1,6 +1,12 @@
-from fastapi import FastAPI
+
 from pydantic import BaseModel
 from fastapi import HTTPException
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+
+from database import engine, Base, get_db
+import database
+import models
 
 
 class Task(BaseModel):
@@ -12,13 +18,29 @@ class Task(BaseModel):
 
 app = FastAPI()
 tasks = []
-
+database.Base.metadata.create_all(bind=database.engine)
 
 @app.post("/tasks")
-def create_task(task: Task):
-    task.task_id = max((t["task_id"] for t in tasks), default=0) + 1
-    tasks.append(task.model_dump())
-    return {"message": "Task created", "task": task}
+def create_task(task: Task, db: Session = Depends(database.get_db)):
+    new_task = models.Task(
+        title=task.title,
+        description=task.description,
+        completed=task.completed
+    )
+
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+
+    return {
+        "message": "Task created",
+        "task": {
+            "task_id": new_task.task_id,
+            "title": new_task.title,
+            "description": new_task.description,
+            "completed": new_task.completed
+        }
+    }
 
 
 @app.get("/tasks")
