@@ -44,28 +44,37 @@ def create_task(task: Task, db: Session = Depends(database.get_db)):
 
 
 @app.get("/tasks")
-def get_tasks():
-    return {"tasks": tasks}
+def get_tasks(db: Session = Depends(database.get_db)):
+    return {"tasks": db.query(models.Task).all()}
 
 @app.get("/tasks/{task_id}")
-def get_task(task_id: int):
-    task = next((t for t in tasks if t["task_id"] == task_id), None)
+def get_task(task_id: int, db: Session = Depends(database.get_db)):
+    task = db.query(models.Task).filter(models.Task.task_id == task_id).first()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return {"task": task}
 
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, updated_task: Task):
-    task = next((t for t in tasks if t["task_id"] == task_id), None)
+def update_task(
+    task_id: int,
+    updated_task: Task,
+    db: Session = Depends(database.get_db),
+):
+    task = db.query(models.Task).filter(models.Task.task_id == task_id).first()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    task.update(updated_task.model_dump())
+    task.title = updated_task.title
+    task.description = updated_task.description
+    task.completed = updated_task.completed
+    db.commit()
+    db.refresh(task)
     return {"message": "Task updated", "task": task}
 
 @app.delete("/tasks/{task_id}")
-def delete_task(task_id: int):
-    task = next((t for t in tasks if t["task_id"] == task_id), None)
+def delete_task(task_id: int, db: Session = Depends(database.get_db)):
+    task = db.query(models.Task).filter(models.Task.task_id == task_id).first()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    tasks.remove(task)
+    db.delete(task)
+    db.commit()
     return {"message": "Task deleted"}
