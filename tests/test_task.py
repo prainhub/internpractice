@@ -1,4 +1,8 @@
 from fastapi.testclient import TestClient 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from main import app
 
 client = TestClient(app) 
@@ -61,9 +65,10 @@ def test_delete_task():
     response = client.delete(f"/tasks/{task_id}")
     assert response.status_code == 200  
     assert response.json()["message"] == "Task deleted" 
-    response = client.delete("/tasks/1")
+    response = client.delete("/tasks/999")
 
-    assert response.status_code == 200
+    assert response.status_code == 404
+
 
 
 def test_get_nonexistent_task():
